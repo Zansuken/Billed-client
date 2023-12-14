@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test": "jest --coverage --noStackTrace --watch",
+    "test": "jest --coverage --noStackTrace",
+    "test-watch": "jest --coverage --noStackTrace --watch",
     "dev": "live-server"
   },
   "jest": {
