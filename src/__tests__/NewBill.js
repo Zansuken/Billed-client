@@ -7,10 +7,18 @@ import NewBillUI from "../views/NewBillUI.js";
 import NewBill from "../containers/NewBill.js";
 import mockStore from "../__mocks__/store";
 import { bills } from "../fixtures/bills.js";
+import { ROUTES } from "../constants/routes.js";
+import "@testing-library/jest-dom";
 
 jest.mock("../app/Store", () => mockStore);
 
+const onNavigate = (pathname) => {
+  document.body.innerHTML = ROUTES({ pathname });
+};
+
 describe("Given I am connected as an employee", () => {
+  const { getComputedStyle } = window;
+  window.getComputedStyle = (elt) => getComputedStyle(elt);
   beforeAll(() => {
     // Populating the localStorage:
     window.localStorage.setItem(
@@ -28,60 +36,88 @@ describe("Given I am connected as an employee", () => {
   });
   describe("When I am on NewBill Page", () => {
     test("Then the form should be displayed", () => {
-      expect(screen.getByTestId("form-new-bill")).toBeTruthy();
+      const formElements = [
+        "form-new-bill",
+        "expense-type",
+        "expense-name",
+        "datepicker",
+        "amount",
+        "vat",
+        "pct",
+        "commentary",
+        "file",
+      ];
+      formElements.forEach((element) => {
+        expect(screen.getByTestId(element)).toBeTruthy();
+      });
 
-      // Title:
-      expect(screen.getByText(/Envoyer une note de frais/)).toBeTruthy();
+      const labels = [
+        "Envoyer une note de frais",
+        "Type de dépense",
+        "Nom de la dépense",
+        "Date",
+        "Montant TTC",
+        "TVA",
+        "Commentaire",
+        "Justificatif",
+      ];
+      labels.forEach((label) => {
+        expect(screen.getByText(new RegExp(label))).toBeTruthy();
+      });
 
-      // Labels:
-      expect(screen.getByText(/Type de dépense/)).toBeTruthy();
-      expect(screen.getByText(/Nom de la dépense/)).toBeTruthy();
-      expect(screen.getByText(/Date/)).toBeTruthy();
-      expect(screen.getByText(/Montant TTC/)).toBeTruthy();
-      expect(screen.getByText(/TVA/)).toBeTruthy();
-      expect(screen.getByText(/Commentaire/)).toBeTruthy();
-      expect(screen.getByText(/Justificatif/)).toBeTruthy();
-
-      // Inputs:
-      expect(screen.getByTestId("expense-type")).toBeTruthy();
-      expect(screen.getByTestId("expense-name")).toBeTruthy();
-      expect(screen.getByTestId("datepicker")).toBeTruthy();
-      expect(screen.getByTestId("amount")).toBeTruthy();
-      expect(screen.getByTestId("vat")).toBeTruthy();
-      expect(screen.getByTestId("pct")).toBeTruthy();
-      expect(screen.getByTestId("commentary")).toBeTruthy();
-      expect(screen.getByTestId("file")).toBeTruthy();
-
-      // Submit button:
       expect(screen.getByRole("button", { name: "Envoyer" })).toBeTruthy();
     });
   });
   describe("When I change the file input field", () => {
-    test("Then the handleChangeFile function should be called", async () => {
-      const container = new NewBill({
-        document,
-        onNavigate: jest.fn,
-        store: mockStore,
-        localStorage: window.localStorage,
-      });
+    test.each([
+      ["test.jpg", "image/jpg", ".jpg", true],
+      ["test.txt", "text/plain", ".txt", false],
+      ["test.zip", "application/zip", ".zip", false],
+      ["test.png", "image/png", ".png", true],
+    ])(
+      "Then the handleChangeFile function should be called with file type %s",
+      async (filename, type, extension, isValidExtension) => {
+        const container = new NewBill({
+          document,
+          onNavigate,
+          store: mockStore,
+          localStorage: window.localStorage,
+        });
 
-      const fileInput = screen.getByTestId("file");
-      const handleChangeFile = jest.fn(container.handleChangeFile);
-      fileInput.addEventListener("change", handleChangeFile);
-      const file = new File(["test"], "test.jpg", { type: "image/jpg" });
+        const fileInput = screen.getByTestId("file");
+        const handleChangeFile = jest.fn(container.handleChangeFile);
+        fileInput.addEventListener("change", handleChangeFile);
+        const file = new File([""], filename, { type });
 
-      fireEvent.change(fileInput, {
-        target: {
-          files: [file],
-        },
-      });
+        fireEvent.change(fileInput, {
+          target: {
+            files: [file],
+          },
+        });
 
-      await waitFor(() => expect(handleChangeFile).toHaveBeenCalled());
-    });
+        await waitFor(() => expect(handleChangeFile).toHaveBeenCalled());
+
+        const errorHelper = screen.queryByTestId("file-error-helper");
+        const expectedError = screen.queryByText(
+          `This file type: "${extension}" is not allowed. Authorized extensions: .jpeg, .jpg, .png, .gif`
+        );
+        const submitBtn = screen.getByTestId("btn-send-bill");
+
+        if (!isValidExtension) {
+          expect(errorHelper).toBeInTheDocument();
+          expect(expectedError).toBeInTheDocument();
+          expect(submitBtn).toBeDisabled();
+        } else {
+          expect(errorHelper).not.toBeInTheDocument();
+          expect(expectedError).not.toBeInTheDocument();
+          expect(submitBtn).not.toBeDisabled();
+        }
+      }
+    );
     test("Then the handleChangeFile function should handle errors", async () => {
       const container = new NewBill({
         document,
-        onNavigate: jest.fn,
+        onNavigate,
         store: mockStore,
         localStorage: window.localStorage,
       });
@@ -94,8 +130,8 @@ describe("Given I am connected as an employee", () => {
       const fileInput = screen.getByTestId("file");
       const handleChangeFile = jest.fn(container.handleChangeFile);
       fileInput.addEventListener("change", handleChangeFile);
-      const file = new File([""], "test.txt", { type: "text/plain" });
-      Object.defineProperty(fileInput, "files", { value: [file] });
+      const validFile = new File([""], "test.png", { type: "image/png" });
+      Object.defineProperty(fileInput, "files", { value: [validFile] });
 
       // Spy on console.error
       const errorSpy = jest.spyOn(console, "error");
@@ -117,7 +153,7 @@ describe("Given I am connected as an employee", () => {
     test("Then the submit function should be called", async () => {
       const container = new NewBill({
         document,
-        onNavigate: jest.fn,
+        onNavigate,
         store: mockStore,
         localStorage: window.localStorage,
       });
@@ -150,7 +186,7 @@ describe("Given I am connected as an employee", () => {
       const typeInput = screen.getByTestId("expense-type");
 
       fileInput.addEventListener("change", handleChangeFile);
-      const file = new File(["test"], "test.jpg", { type: "image/jpg" });
+      const file = new File([""], "test.jpg", { type: "image/jpg" });
 
       fireEvent.change(fileInput, {
         target: {
@@ -187,6 +223,11 @@ describe("Given I am connected as an employee", () => {
       expect(handleSubmit).toHaveBeenCalled();
       expect(updateBillSpy).toHaveBeenCalledWith(newBill);
       expect(onNavigateSpy).toHaveBeenCalled();
+
+      await waitFor(() => {
+        screen.getByTestId("btn-new-bill");
+        screen.getByText("Mes notes de frais");
+      });
     });
   });
 });

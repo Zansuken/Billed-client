@@ -20,7 +20,7 @@ export default () => {
                         <option>Hôtel et logement</option>
                         <option>Services en ligne</option>
                         <option>IT et électronique</option>
-                        <option>Equipement et matériel</option>
+                        <option>Équipement et matériel</option>
                         <option>Fournitures de bureau</option>
                       </select>
                   </div>
@@ -52,7 +52,7 @@ export default () => {
                     <label for="commentary" class="bold-label">Commentaire</label>
                     <textarea class="form-control blue-border" data-testid="commentary" rows="3"></textarea>
                   </div>
-                  <div class="col-half">
+                  <div id="file-container" class="col-half">
                     <label for="file" class="bold-label">Justificatif</label>
                     <input required type="file" class="form-control blue-border" data-testid="file" accept=".jpeg, .jpg, .png, .gif" />
                   </div>
@@ -61,7 +61,7 @@ export default () => {
             <div class="row">
               <div class="col-md-6">
                 <div class="col-half">
-                  <button type="submit" id='btn-send-bill' class="btn btn-primary">Envoyer</button>
+                  <button type="submit" id="btn-send-bill" data-testid="btn-send-bill" class="btn btn-primary">Envoyer</button>
                 </div>
               </div>
             </div>
